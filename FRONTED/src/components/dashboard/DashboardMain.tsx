@@ -2,18 +2,27 @@ import { ClipboardList, FileText, Sparkles, Video, Users } from 'lucide-react';
 
 interface SessionData {
   name: string;
+  email: string;
   role: string;
   track: string;
   level: string;
+  faceAnalysis: string;
+}
+
+interface LiveMetrics {
   lastSession: string;
   overallRating: string;
   interviewType: string;
-  faceAnalysis: string;
+  currentSignal: string;
+  technicalScore: string;
+  hrScore: string;
+  confidenceScore: string;
 }
 
 interface DashboardMainProps {
   currentTab: string;
   sessionData: SessionData;
+  liveMetrics: LiveMetrics;
 }
 
 const featureCards = [
@@ -43,7 +52,7 @@ const featureCards = [
   }
 ];
 
-export default function DashboardMain({ currentTab, sessionData }: DashboardMainProps) {
+export default function DashboardMain({ currentTab, sessionData, liveMetrics }: DashboardMainProps) {
   return (
     <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-6">
       <div className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
@@ -60,35 +69,64 @@ export default function DashboardMain({ currentTab, sessionData }: DashboardMain
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-3xl bg-zinc-900 border border-zinc-800 p-4 text-center">
                   <p className="text-[10px] uppercase tracking-[0.35em] text-zinc-500">Last session</p>
-                  <p className="mt-3 text-xl font-semibold text-white">{sessionData.lastSession}</p>
+                  <p className="mt-3 text-xl font-semibold text-white">{liveMetrics.lastSession}</p>
                 </div>
                 <div className="rounded-3xl bg-zinc-900 border border-zinc-800 p-4 text-center">
                   <p className="text-[10px] uppercase tracking-[0.35em] text-zinc-500">Overall rating</p>
-                  <p className="mt-3 text-xl font-semibold text-emerald-400">{sessionData.overallRating}</p>
+                  <p className="mt-3 text-xl font-semibold text-emerald-400">{liveMetrics.overallRating}</p>
                 </div>
                 <div className="rounded-3xl bg-zinc-900 border border-zinc-800 p-4 text-center">
                   <p className="text-[10px] uppercase tracking-[0.35em] text-zinc-500">Mode</p>
-                  <p className="mt-3 text-xl font-semibold text-white">{sessionData.interviewType}</p>
+                  <p className="mt-3 text-xl font-semibold text-white">{liveMetrics.interviewType}</p>
                 </div>
               </div>
             </div>
           </div>
 
           {currentTab === 'overview' && (
-            <div className="grid gap-4 xl:grid-cols-2">
-              {featureCards.map((card) => {
-                const Icon = card.icon;
-                return (
-                  <div key={card.title} className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6 shadow-lg shadow-black/10">
-                    <div className={`inline-flex items-center justify-center rounded-3xl bg-gradient-to-r ${card.accent} p-3 text-white shadow-lg shadow-zinc-900/10 mb-5`}>
-                      <Icon className="w-5 h-5" />
+            <>
+              <div className="grid gap-4 xl:grid-cols-2">
+                {featureCards.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <div key={card.title} className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6 shadow-lg shadow-black/10">
+                      <div className={`inline-flex items-center justify-center rounded-3xl bg-gradient-to-r ${card.accent} p-3 text-white shadow-lg shadow-zinc-900/10 mb-5`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-white">{card.title}</h3>
+                      <p className="mt-3 text-sm text-zinc-400 leading-relaxed">{card.description}</p>
                     </div>
-                    <h3 className="text-lg font-semibold text-white">{card.title}</h3>
-                    <p className="mt-3 text-sm text-zinc-400 leading-relaxed">{card.description}</p>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6 shadow-xl shadow-black/20">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.35em] text-zinc-500">Realtime simulation telemetry</p>
+                    <h3 className="mt-2 text-2xl font-semibold text-white">Live candidate performance</h3>
                   </div>
-                );
-              })}
-            </div>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-xs uppercase tracking-[0.3em] text-emerald-300">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    {liveMetrics.currentSignal}
+                  </span>
+                </div>
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                  {[
+                    { label: 'Technical Score', value: liveMetrics.technicalScore, tone: 'Updated live' },
+                    { label: 'Behavior Score', value: liveMetrics.hrScore, tone: 'Adaptive feedback' },
+                    { label: 'Confidence', value: liveMetrics.confidenceScore, tone: 'Realtime signal' }
+                  ].map((metric) => (
+                    <div key={metric.label} className="rounded-3xl bg-zinc-900 border border-zinc-800 p-5">
+                      <p className="text-xs uppercase tracking-[0.35em] text-zinc-500">{metric.label}</p>
+                      <p className="mt-3 text-3xl font-bold text-white">{metric.value}</p>
+                      <p className="mt-2 text-sm text-zinc-400">{metric.tone}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
 
           {currentTab === 'setup' && (
@@ -257,6 +295,22 @@ export default function DashboardMain({ currentTab, sessionData }: DashboardMain
               <div className="rounded-3xl bg-zinc-900/70 p-4 border border-zinc-800">
                 <p className="text-[10px] uppercase tracking-[0.35em] text-zinc-500">Face analysis</p>
                 <p className="mt-2 text-white">{sessionData.faceAnalysis}</p>
+              </div>
+            </div>
+            <div className="mt-6 grid gap-3">
+              <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">
+                <p className="text-[10px] uppercase tracking-[0.35em] text-zinc-500">Email</p>
+                <p className="mt-2 text-white truncate">{sessionData.email}</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-3xl bg-zinc-900/70 p-4 border border-zinc-800">
+                  <p className="text-[10px] uppercase tracking-[0.35em] text-zinc-500">Last session</p>
+                  <p className="mt-2 text-white">{liveMetrics.lastSession}</p>
+                </div>
+                <div className="rounded-3xl bg-zinc-900/70 p-4 border border-zinc-800">
+                  <p className="text-[10px] uppercase tracking-[0.35em] text-zinc-500">Live rating</p>
+                  <p className="mt-2 text-white">{liveMetrics.overallRating}</p>
+                </div>
               </div>
             </div>
           </div>

@@ -7,21 +7,60 @@ interface AuthFormProps {
 
 export default function AuthForm({ mode }: AuthFormProps) {
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Placeholder logic for demo mode. Replace with your auth API integration.
-    if (mode === 'signup' && formData.password !== formData.confirmPassword) {
-      alert('Passwords must match.');
-      return;
-    }
+    setError('');
+    setLoading(true);
 
-    alert(`${mode === 'login' ? 'Logged in' : 'Account created'} successfully.`);
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
+      if (mode === 'signup' && formData.password !== formData.confirmPassword) {
+        setError('Passwords must match.');
+        setLoading(false);
+        return;
+      }
+
+      const endpoint = mode === 'login' ? 'login' : 'signup';
+      const payload = mode === 'login' 
+        ? { email: formData.email, password: formData.password }
+        : { name: formData.name, email: formData.email, password: formData.password, confirmPassword: formData.confirmPassword };
+
+      const response = await fetch(`${API_BASE_URL}/auth/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `${mode === 'login' ? 'Login' : 'Signup'} failed`);
+      }
+
+      // Store token in localStorage
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
+      // Redirect to dashboard
+      window.location.href = '/dashboard';
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -31,6 +70,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
         <h1 className="mt-4 text-3xl font-bold text-white">{mode === 'login' ? 'Sign in' : 'Create account'}</h1>
         <p className="mt-2 text-sm text-zinc-400">Access your interview dashboard and track simulation progress.</p>
       </div>
+
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-red-900/20 border border-red-800 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
 
       <form className="space-y-5" onSubmit={handleSubmit}>
         {mode === 'signup' && (
@@ -43,6 +88,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               className="mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 outline-none transition focus:border-indigo-500"
               placeholder="Enter your name"
               required
+              disabled={loading}
             />
           </label>
         )}
@@ -57,6 +103,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             className="mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 outline-none transition focus:border-indigo-500"
             placeholder="you@example.com"
             required
+            disabled={loading}
           />
         </label>
 
@@ -70,6 +117,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             className="mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 outline-none transition focus:border-indigo-500"
             placeholder="Enter your password"
             required
+            disabled={loading}
           />
         </label>
 
@@ -84,15 +132,17 @@ export default function AuthForm({ mode }: AuthFormProps) {
               className="mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-zinc-100 outline-none transition focus:border-indigo-500"
               placeholder="Re-enter your password"
               required
+              disabled={loading}
             />
           </label>
         )}
 
         <button
           type="submit"
-          className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-95"
+          disabled={loading}
+          className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {mode === 'login' ? 'Sign in' : 'Create account'}
+          {loading ? (mode === 'login' ? 'Signing in...' : 'Creating account...') : (mode === 'login' ? 'Sign in' : 'Create account')}
         </button>
       </form>
 
