@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
+import interviewRoutes from './routes/interviewRoutes.js';
+import dsaRoutes from './routes/AGENTS/dsaRoutes.js';
 
 dotenv.config();
 
@@ -33,6 +35,8 @@ mongoose.connect(process.env.MONGOSE_URL, {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/interviews', interviewRoutes);
+app.use('/api/dsa', dsaRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

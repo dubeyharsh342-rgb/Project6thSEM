@@ -5,6 +5,7 @@ import DashboardTopbar from '../components/dashboard/DashboardTopbar';
 import DashboardMain from '../components/dashboard/DashboardMain';
 import DashboardFooter from '../components/dashboard/DashboardFooter';
 import { authAPI, tokenStorage } from '../services/authService';
+import { interviewAPI } from '../services/interviewService';
 
 interface SessionData {
   name: string;
@@ -13,6 +14,38 @@ interface SessionData {
   track: string;
   level: string;
   faceAnalysis: string;
+}
+
+interface InterviewSession {
+  candidateName: string;
+  targetRole: string;
+  interviewTrack: string;
+  difficulty: string;
+  company: string;
+  resumeUrl: string;
+  resumeKey: string;
+  resumeOriginalName: string;
+  status: string;
+  createdAt: string;
+  dsaQuestions?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    topics: string[];
+    company: string;
+    difficulty: string;
+    expectedApproach: {
+      timeComplexity: string;
+      spaceComplexity: string;
+      reasoning: string;
+    };
+    tip: string;
+  }>;
+  resumeInsights?: {
+    summary: string;
+    strengths: string[];
+    fileType: string;
+  };
 }
 
 interface LiveMetrics {
@@ -26,13 +59,13 @@ interface LiveMetrics {
 }
 
 const initialLiveMetrics: LiveMetrics = {
-  lastSession: 'Loading...',
-  overallRating: '0%',
-  interviewType: 'Initializing...',
-  currentSignal: 'Connecting to agents',
-  technicalScore: '0%',
-  hrScore: '0%',
-  confidenceScore: '0%'
+  lastSession: 'Awaiting configuration',
+  overallRating: 'Pending',
+  interviewType: 'Not configured',
+  currentSignal: 'Interview setup required',
+  technicalScore: 'Pending',
+  hrScore: 'Pending',
+  confidenceScore: 'Pending'
 };
 
 export default function DashboardPage() {
@@ -40,8 +73,11 @@ export default function DashboardPage() {
   const [currentTab, setCurrentTab] = useState('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [interviewSession, setInterviewSession] = useState<InterviewSession | null>(null);
   const [liveMetrics, setLiveMetrics] = useState<LiveMetrics>(initialLiveMetrics);
   const [loading, setLoading] = useState(true);
+  const [setupMessage, setSetupMessage] = useState<string>('');
+  const [setupError, setSetupError] = useState<string>('');
 
   useEffect(() => {
     const token = tokenStorage.getToken();
@@ -51,63 +87,80 @@ export default function DashboardPage() {
       return;
     }
 
-    authAPI
-      .getCurrentUser(token)
-      .then((data: { user: { name: string; email: string } }) => {
+    const loadData = async () => {
+      try {
+        const userResponse = await authAPI.getCurrentUser(token);
         setSessionData({
-          name: data.user.name,
-          email: data.user.email,
-          role: 'Software Development Engineer',
-          track: 'Technical / DSA',
-          level: 'Mid-level',
-          faceAnalysis: 'Ready'
+          name: userResponse.user.name,
+          email: userResponse.user.email,
+          role: 'Not configured',
+          track: 'Not configured',
+          level: 'Pending',
+          faceAnalysis: 'Pending',
         });
-        setLiveMetrics({
-          lastSession: new Date().toLocaleTimeString(),
-          overallRating: '78%',
-          interviewType: 'Simulated Panel',
-          currentSignal: 'Live agent sequence active',
-          technicalScore: '79%',
-          hrScore: '84%',
-          confidenceScore: '76%'
-        });
-      })
-      .catch(() => {
+
+        const sessionResponse = await interviewAPI.getLatestSession(token);
+        if (sessionResponse.session) {
+          setInterviewSession(sessionResponse.session);
+          setSessionData((prev) => prev ? {
+            ...prev,
+            role: sessionResponse.session.targetRole,
+            track: sessionResponse.session.interviewTrack,
+          } : null);
+          setLiveMetrics({
+            lastSession: new Date(sessionResponse.session.createdAt).toLocaleString(),
+            overallRating: 'Pending',
+            interviewType: sessionResponse.session.interviewTrack,
+            currentSignal: 'Interview configured',
+            technicalScore: 'Pending',
+            hrScore: 'Pending',
+            confidenceScore: 'Pending',
+          });
+        }
+      } catch (error) {
         tokenStorage.removeToken();
         navigate('/login');
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, [navigate]);
 
-  useEffect(() => {
-    if (!sessionData) {
+  const handleInterviewSetupSubmit = async (formData: FormData) => {
+    setSetupError('');
+    setSetupMessage('');
+
+    const token = tokenStorage.getToken();
+    if (!token) {
+      navigate('/login');
       return;
     }
 
-    const interval = window.setInterval(() => {
-      setLiveMetrics((prev) => {
-        const parseValue = (value: string) => Number(value.replace('%', ''));
-        const adjust = (value: string, min = 65, max = 95) => {
-          const base = parseValue(value);
-          const next = Math.min(max, Math.max(min, base + Math.round((Math.random() - 0.5) * 8)));
-          return `${next}%`;
-        };
-
-        const signals = ['Live agent sequence active', 'Reviewing last interaction', 'Preparing next question', 'Adaptive feedback ready'];
-        return {
-          ...prev,
-          lastSession: new Date().toLocaleTimeString(),
-          overallRating: adjust(prev.overallRating, 70, 92),
-          technicalScore: adjust(prev.technicalScore, 68, 92),
-          hrScore: adjust(prev.hrScore, 72, 94),
-          confidenceScore: adjust(prev.confidenceScore, 64, 88),
-          currentSignal: signals[Math.floor(Math.random() * signals.length)]
-        };
+    try {
+      const response = await interviewAPI.createSession(formData, token);
+      setInterviewSession(response.session);
+      setSessionData((prev) => prev ? {
+        ...prev,
+        role: response.session.targetRole,
+        track: response.session.interviewTrack,
+      } : null);
+      setLiveMetrics({
+        lastSession: new Date(response.session.createdAt).toLocaleString(),
+        overallRating: 'Pending',
+        interviewType: response.session.interviewTrack,
+        currentSignal: 'Interview configured',
+        technicalScore: 'Pending',
+        hrScore: 'Pending',
+        confidenceScore: 'Pending',
       });
-    }, 4500);
-
-    return () => window.clearInterval(interval);
-  }, [sessionData]);
+      setSetupMessage('Interview setup saved successfully. Redirecting to generated DSA questions...');
+      navigate('/dashboard/dsa-questions');
+    } catch (error: any) {
+      setSetupError(error.message || 'Unable to save interview setup');
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -141,7 +194,16 @@ export default function DashboardPage() {
         <DashboardSidebar user={sessionData} currentTab={currentTab} isOpen={isSidebarOpen} onTabChange={setCurrentTab} onClose={() => setIsSidebarOpen(false)} onLogout={handleLogout} />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <DashboardTopbar userName={sessionData.name} currentRound={liveMetrics.interviewType} onToggleSidebar={() => setIsSidebarOpen(true)} />
-          <DashboardMain currentTab={currentTab} sessionData={sessionData} liveMetrics={liveMetrics} />
+          <DashboardMain
+            currentTab={currentTab}
+            sessionData={sessionData}
+            liveMetrics={liveMetrics}
+            interviewSession={interviewSession}
+            onSubmitInterview={handleInterviewSetupSubmit}
+            onViewDsaQuestions={() => navigate('/dashboard/dsa-questions')}
+            setupMessage={setupMessage}
+            setupError={setupError}
+          />
         </div>
       </div>
       <DashboardFooter />

@@ -1,3 +1,4 @@
+import { useState, ChangeEvent, FormEvent } from 'react';
 import { ClipboardList, FileText, Sparkles, Video, Users } from 'lucide-react';
 
 interface SessionData {
@@ -7,6 +8,23 @@ interface SessionData {
   track: string;
   level: string;
   faceAnalysis: string;
+}
+
+interface InterviewSession {
+  candidateName: string;
+  targetRole: string;
+  interviewTrack: string;
+  difficulty: string;
+  status: string;
+  createdAt: string;
+}
+
+interface InterviewSetupPayload {
+  candidateName: string;
+  targetRole: string;
+  interviewTrack: string;
+  difficulty: string;
+  company: string;
 }
 
 interface LiveMetrics {
@@ -23,6 +41,11 @@ interface DashboardMainProps {
   currentTab: string;
   sessionData: SessionData;
   liveMetrics: LiveMetrics;
+  interviewSession: InterviewSession | null;
+  onSubmitInterview: (payload: FormData) => Promise<void>;
+  onViewDsaQuestions: () => void;
+  setupMessage: string;
+  setupError: string;
 }
 
 const featureCards = [
@@ -52,7 +75,81 @@ const featureCards = [
   }
 ];
 
-export default function DashboardMain({ currentTab, sessionData, liveMetrics }: DashboardMainProps) {
+export default function DashboardMain({ currentTab, sessionData, liveMetrics, interviewSession, onSubmitInterview, onViewDsaQuestions, setupMessage, setupError }: DashboardMainProps) {
+  const [formData, setFormData] = useState<InterviewSetupPayload>({
+    candidateName: '',
+    targetRole: '',
+    interviewTrack: '',
+    difficulty: '',
+    company: '',
+  });
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [localError, setLocalError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    const key = name as keyof InterviewSetupPayload;
+    setFormData((prev) => ({ ...prev, [key]: value }));
+    if (localError) setLocalError('');
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setResumeFile(file);
+    if (localError) setLocalError('');
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!formData.candidateName.trim()) {
+      setLocalError('Please enter the candidate name.');
+      return;
+    }
+    if (!formData.targetRole.trim()) {
+      setLocalError('Please select the target role.');
+      return;
+    }
+    if (!formData.interviewTrack.trim()) {
+      setLocalError('Please select an interview track.');
+      return;
+    }
+    if (!formData.difficulty.trim()) {
+      setLocalError('Please select an interview difficulty.');
+      return;
+    }
+    if (!formData.company.trim()) {
+      setLocalError('Please enter the target company for the interview.');
+      return;
+    }
+    if (!resumeFile) {
+      setLocalError('Please upload a resume PDF or DOCX file.');
+      return;
+    }
+
+    const payload = new FormData();
+    payload.append('candidateName', formData.candidateName);
+    payload.append('targetRole', formData.targetRole);
+    payload.append('interviewTrack', formData.interviewTrack);
+    payload.append('difficulty', formData.difficulty);
+    payload.append('company', formData.company);
+    payload.append('resume', resumeFile);
+
+    setSubmitting(true);
+    setLocalError('');
+
+    try {
+      await onSubmitInterview(payload);
+      setFormData({ candidateName: '', targetRole: '', interviewTrack: '', difficulty: '', company: '' });
+      setResumeFile(null);
+    } catch {
+      setLocalError('Unable to submit interview configuration.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-6">
       <div className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
@@ -134,60 +231,172 @@ export default function DashboardMain({ currentTab, sessionData, liveMetrics }: 
               <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-2xl font-bold text-white">Pre-Interview Intake</h3>
-                  <p className="mt-2 text-sm text-zinc-400">Collect candidate identity and role details before the AI agents begin.</p>
+                  <p className="mt-2 text-sm text-zinc-400">Enter the candidate setup details to persist interview configuration on the backend.</p>
                 </div>
                 <span className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-xs uppercase tracking-[0.3em] text-zinc-400">
                   Required step
                 </span>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
+              {setupError && (
+                <div className="rounded-3xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+                  {setupError}
+                </div>
+              )}
+
+              {setupMessage && (
+                <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+                  {setupMessage}
+                </div>
+              )}
+
+              {setupMessage && (
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <button
+                    type="button"
+                    onClick={onViewDsaQuestions}
+                    className="inline-flex items-center justify-center rounded-3xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400 transition"
+                  >
+                    View DSA questions
+                  </button>
+                </div>
+              )}
+
+              {interviewSession ? (
+                <div className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5 text-sm text-zinc-300 mb-6">
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs uppercase tracking-[0.35em] text-zinc-500">Latest configured interview</span>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <p className="text-zinc-400 text-xs uppercase tracking-[0.35em]">Candidate</p>
+                        <p className="text-white mt-1 font-semibold">{interviewSession.candidateName}</p>
+                      </div>
+                      <div>
+                        <p className="text-zinc-400 text-xs uppercase tracking-[0.35em]">Role</p>
+                        <p className="text-white mt-1 font-semibold">{interviewSession.targetRole}</p>
+                      </div>
+                      <div>
+                        <p className="text-zinc-400 text-xs uppercase tracking-[0.35em]">Track</p>
+                        <p className="text-white mt-1 font-semibold">{interviewSession.interviewTrack}</p>
+                      </div>
+                      <div>
+                        <p className="text-zinc-400 text-xs uppercase tracking-[0.35em]">Company</p>
+                        <p className="text-white mt-1 font-semibold">{(interviewSession as any).company || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <p className="text-zinc-400 text-xs uppercase tracking-[0.35em]">Difficulty</p>
+                        <p className="text-white mt-1 font-semibold">{interviewSession.difficulty}</p>
+                      </div>
+                    </div>
+                    <p className="text-zinc-500 text-xs">Configured at {new Date(interviewSession.createdAt).toLocaleString()}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5 text-sm text-zinc-400 mb-6">
+                  No interview setup has been saved yet. Complete the form below and submit to persist this configuration.
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="grid gap-4 lg:grid-cols-2">
                 <div className="space-y-4">
                   <label className="block text-sm text-zinc-300">
                     Candidate name
-                    <input className="mt-2 w-full rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none focus:border-indigo-500" placeholder="Diksha Rai" />
+                    <input
+                      name="candidateName"
+                      value={formData.candidateName}
+                      onChange={handleChange}
+                      className="mt-2 w-full rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none focus:border-indigo-500"
+                      placeholder="Diksha Rai"
+                    />
                   </label>
                   <label className="block text-sm text-zinc-300">
                     Role applied
-                    <input className="mt-2 w-full rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none focus:border-indigo-500" placeholder="Software Development Engineer" />
+                    <input
+                      name="targetRole"
+                      value={formData.targetRole}
+                      onChange={handleChange}
+                      className="mt-2 w-full rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none focus:border-indigo-500"
+                      placeholder="Software Development Engineer"
+                    />
+                  </label>
+                  <label className="block text-sm text-zinc-300">
+                    Target company
+                    <input
+                      name="company"
+                      value={formData.company}
+                      onChange={handleChange}
+                      className="mt-2 w-full rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none focus:border-indigo-500"
+                      placeholder="Amazon, Google, Microsoft..."
+                    />
                   </label>
                   <label className="block text-sm text-zinc-300">
                     Interview track
-                    <select className="mt-2 w-full rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none focus:border-indigo-500">
-                      <option>Technical / DSA</option>
-                      <option>HR & Behavioral</option>
-                      <option>Core System Design</option>
+                    <select
+                      name="interviewTrack"
+                      value={formData.interviewTrack}
+                      onChange={handleChange}
+                      className="mt-2 w-full rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none focus:border-indigo-500"
+                    >
+                      <option value="">Select track</option>
+                      <option value="Technical / DSA">Technical / DSA</option>
+                      <option value="HR & Behavioral">HR & Behavioral</option>
+                      <option value="Core System Design">Core System Design</option>
                     </select>
                   </label>
+                  <label className="block text-sm text-zinc-300">
+                    Resume upload
+                    <input
+                      type="file"
+                      accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={handleFileChange}
+                      className="mt-2 w-full rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none file:bg-zinc-800 file:border-0 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:rounded-full file:bg-indigo-500 file:cursor-pointer"
+                    />
+                  </label>
+                  {resumeFile && (
+                    <div className="rounded-3xl border border-zinc-800 bg-zinc-900/70 p-4 text-sm text-zinc-400">
+                      Uploaded file: <span className="text-white">{resumeFile.name}</span>
+                    </div>
+                  )}
                 </div>
+
                 <div className="space-y-4">
                   <label className="block text-sm text-zinc-300">
-                    Resume status
-                    <div className="mt-2 rounded-3xl border border-dashed border-zinc-800 bg-zinc-900 p-4 text-zinc-400">
-                      Resume uploaded
-                    </div>
-                  </label>
-                  <label className="block text-sm text-zinc-300">
                     Interview difficulty
-                    <select className="mt-2 w-full rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none focus:border-indigo-500">
-                      <option>Medium</option>
-                      <option>Easy</option>
-                      <option>Hard</option>
+                    <select
+                      name="difficulty"
+                      value={formData.difficulty}
+                      onChange={handleChange}
+                      className="mt-2 w-full rounded-3xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none focus:border-indigo-500"
+                    >
+                      <option value="">Select difficulty</option>
+                      <option value="Easy">Easy</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Hard">Hard</option>
                     </select>
                   </label>
+
                   <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5 text-sm text-zinc-400">
-                    <p className="font-semibold text-white">Next step</p>
-                    <p className="mt-2">When the candidate profile is ready, the system will forward to the AI agent orchestrator for DSA, HR, and behavioral evaluation.</p>
+                    <p className="font-semibold text-white">Submission details</p>
+                    <p className="mt-2">This interview setup is saved to the backend and will become the source of truth for the active session.</p>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-                <span className="text-sm text-zinc-400">This dashboard is a design preview. The intake card is visually complete and ready for integration.</span>
-                <button className="rounded-3xl bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 hover:opacity-95 transition">
-                  Confirm profile details
-                </button>
-              </div>
+                <div className="lg:col-span-2 flex justify-end mt-4">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="rounded-3xl bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 hover:opacity-95 transition disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {submitting ? 'Saving configuration...' : 'Save interview setup'}
+                  </button>
+                </div>
+              </form>
+
+              {localError && (
+                <div className="mt-4 rounded-3xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+                  {localError}
+                </div>
+              )}
             </div>
           )}
 
