@@ -35,28 +35,44 @@ const features = [
 
 export default function LandingFeatures() {
   return (
-    <section id="features" className="bg-zinc-900/30 border-y border-zinc-800 py-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="features" className="relative overflow-hidden bg-zinc-950/90 border-y border-zinc-800 py-24">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.18),_transparent_55%)] opacity-70" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-[radial-gradient(circle_at_bottom,_rgba(14,165,233,0.12),_transparent_45%)] opacity-60" />
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="inline-flex rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1 text-sm font-semibold uppercase tracking-[0.24em] text-indigo-300 mb-4">
+            Feature Showcase
+          </span>
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl mb-4">
             Engineered for Authentic Placement Prep
           </h2>
-          <p className="text-zinc-400 text-lg">
+          <p className="mx-auto max-w-2xl text-zinc-400 text-lg leading-8">
             Every component is dedicated to creating a comprehensive, objective mirror of enterprise interview loops.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
-              <div key={feature.title} className="flex gap-4">
-                <div className="shrink-0 p-3 bg-zinc-900 border border-zinc-800 rounded-xl text-indigo-400 w-12 h-12 flex items-center justify-center shadow-sm">
-                  <Icon className="w-5 h-5" />
+              <div
+                key={feature.title}
+                className="group flex flex-col gap-5 overflow-hidden rounded-[2rem] border border-zinc-800/90 bg-zinc-900/80 p-6 shadow-[0_20px_80px_-40px_rgba(15,23,42,0.9)] transition duration-300 hover:-translate-y-1 hover:border-indigo-500/40 hover:bg-zinc-900/95"
+              >
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-500 to-sky-500 text-white shadow-lg shadow-sky-500/20 transition duration-300 group-hover:scale-105">
+                  <Icon className="h-6 w-6" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-zinc-100 mb-1.5">{feature.title}</h3>
+                <div className="space-y-3">
+                  <h3 className="text-xl font-semibold text-white leading-tight">{feature.title}</h3>
                   <p className="text-sm text-zinc-400 leading-relaxed">{feature.description}</p>
+                </div>
+                <div className="mt-auto flex items-center gap-2 text-sm font-medium text-indigo-300">
+                  <span className="inline-flex h-9 items-center justify-center rounded-full bg-white/5 px-3 text-indigo-200 ring-1 ring-white/10">
+                    Live insights
+                  </span>
+                  <span className="text-zinc-500">•</span>
+                  <span>Modern UX</span>
                 </div>
               </div>
             );
