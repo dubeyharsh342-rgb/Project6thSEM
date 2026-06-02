@@ -44,14 +44,14 @@ export default function Dashboard() {
   };
 
   // Handle Input Changes
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (formError) setFormError('');
   };
 
   // Form Validation and Submission (SRS Setup Module F04)
-  const handleStartSimulation = (e) => {
+  const handleStartSimulation = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     // F01 Validation: Name accepts 2-50 chars
@@ -267,7 +267,7 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-
+          input
           {/* VIEW 2: DEDICATED DIAGNOSTIC METRICS */}
           {currentTab === 'analytics' && (
             <div className="space-y-6 font-mono text-xs animate-fade-in">
@@ -379,7 +379,7 @@ export default function Dashboard() {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    [cite_start]placeholder="e.g., Diksha Rai" [cite: 137]
+                    placeholder="e.g., Diksha Rai"
                     className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-2.5 text-zinc-100 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-zinc-600"
                   />
                 </div>

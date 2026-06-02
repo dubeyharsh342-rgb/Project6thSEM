@@ -16,7 +16,7 @@ export default function LandingNav() {
 
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
           <a href="#agents" className="hover:text-zinc-100 transition-colors">
-            AI Panel
+            AI Panels
           </a>
           <a href="#features" className="hover:text-zinc-100 transition-colors">
             Core Engine
